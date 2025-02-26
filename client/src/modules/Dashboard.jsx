@@ -98,7 +98,7 @@ const Dashboard = () => {
             </svg>
           </div>
         </div>
-        <div className="h-[75%]  w-full overflow-auto scrollbar-hide shadow-sm">
+        <div className="h-[75%] w-full overflow-y-scroll !scrollbar-hide shadow-sm pr-4">
           <div className="p-12 ">
             <div className=" max-w-[40%] bg-gray-100 rounded-b-xl rounded-tr-xl p-4 mb-4">
               Lorem ipsum dolor sit amet consectetur adipisicing elit.
