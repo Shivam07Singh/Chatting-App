@@ -1,5 +1,7 @@
 import React from "react";
 import userLogo from "../assets/user-solid.svg";
+import Input from "../components/Input";
+
 
 const Dashboard = () => {
   const contacts = [
@@ -72,7 +74,7 @@ const Dashboard = () => {
         </div>
       </div>
       <div className="h-screen w-[50%] bg-white flex flex-col items-center">
-        <div className="w-[75%] bg-gray-100 h-[80px] mt-14 rounded-full flex items-center px-14">
+        <div className="w-[75%] bg-gray-100 h-[80px] mt-4 mb-6 rounded-full flex items-center px-14 ">
           <div className=" cursor-pointer">
             <img src={userLogo} alt="userlogo" width={40} height={40} />
           </div>
@@ -96,14 +98,76 @@ const Dashboard = () => {
             </svg>
           </div>
         </div>
-        <div className="h-[75%] border w-full overflow-scroll">
-          <div className="h-[1000px] px-10 py-14">
-            <div className="h-[80px] w-[300px] bg-gray-100 rounded-b-lg rounded-tr-lg"></div>
+        <div className="h-[75%]  w-full overflow-auto scrollbar-hide shadow-sm">
+          <div className="p-12 ">
+            <div className=" max-w-[40%] bg-gray-100 rounded-b-xl rounded-tr-xl p-4 mb-4">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+            </div>
+            <div className="max-w-[40%] bg-blue-400 rounded-b-xl rounded-tl-xl ml-auto p-4 text-white mb-4 ">
+              Lorem ipsum dolor. Voluptas, iusto doloribus.
+            </div>
+            <div className=" max-w-[40%] bg-gray-100 rounded-b-xl rounded-tr-xl p-4 mb-4">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+            </div>
+            <div className="max-w-[40%] bg-blue-400 rounded-b-xl rounded-tl-xl ml-auto p-4 text-white mb-4 ">
+              Lorem ipsum dolor. Voluptas, iusto doloribus.{" "}
+            </div>
+            <div className=" max-w-[40%] bg-gray-100 rounded-b-xl rounded-tr-xl p-4 mb-4">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+            </div>
+            <div className="max-w-[40%] bg-blue-400 rounded-b-xl rounded-tl-xl ml-auto p-4 text-white mb-4 ">
+              Lorem ipsum dolor. Voluptas, iusto doloribus.{" "}
+            </div>
+            <div className=" max-w-[40%] bg-gray-100 rounded-b-xl rounded-tr-xl p-4 mb-4">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+            </div>
+            <div className="max-w-[40%] bg-blue-400 rounded-b-xl rounded-tl-xl ml-auto p-4 text-white mb-4 ">
+              Lorem ipsum dolor. Voluptas, iusto doloribus.{" "}
+            </div>
           </div>
         </div>
-        
+        <div className="p-8 w-full flex items-center">
+          <div className="mr-4 p-2 cursor-pointer bg-light rounded-full">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              width="30"
+              height="30"
+              stroke-width="2"
+            >
+              <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"></path>
+              <path d="M9 12h6"></path>
+              <path d="M12 9v6"></path>
+            </svg>
+          </div>
+          <Input
+            placeholder="Type a message..."
+            className="w-[75%]"
+            inputClassName="p-4 border border-gray-300 shadow-md !rounded-full bg-light focus:ring-0 focus:border-blue-400 outline-none"
+          />
+          <div className="ml-4 p-2 cursor-pointer bg-light rounded-full">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              width="30"
+              height="30"
+              stroke-width="2"
+            >
+              <path d="M10 14l11 -11"></path>
+              <path d="M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5"></path>
+            </svg>
+          </div>
+        </div>
       </div>
-      <div className="min-h-screen w-full md:w-1/4"></div>
+      <div className="min-h-screen w-full md:w-1/4 bg-gray-100"></div>
     </div>
   );
 };
