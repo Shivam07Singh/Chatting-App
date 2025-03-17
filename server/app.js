@@ -3,7 +3,7 @@ const connectDB = require("./connection/db");
 const Users = require("./models/Users");
 const bcryptjs = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const Conversations = require('./models/Conversation');
+const Conversations = require("./models/Conversation");
 const PORT = process.env.PORT || 8000;
 
 //Middleware
@@ -47,8 +47,7 @@ app.post("/api/register", async (req, res, next) => {
   }
 });
 
-
-//Login Authentication 
+//Login Authentication
 app.post("/api/login", async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -79,7 +78,9 @@ app.post("/api/login", async (req, res, next) => {
             user.save();
             next();
           });
-          res.status(200).json({ user:{email:user.email, fullName:user.fullName}, token: user.token });
+          res
+            .status(200)
+            .json({ user: { email: user.email, fullName: user.fullName }, token: user.token });
         }
       }
     }
@@ -88,16 +89,54 @@ app.post("/api/login", async (req, res, next) => {
   }
 });
 
-app.post('/api/conversation', async (req, res) => {
+
+app.get("/api/users", async (req, res) => {
+  try {
+    const users = await Users.find();
+    const userData = Promise.all(
+      users.map(async (user) => {
+        return { user: { email: user.email, fullName: user.fullName }, userId: user._id };
+      })
+    );
+    res.status(200).json(await userData);
+  } catch (error) {
+    console.log("Error", error);
+  }
+});
+
+
+app.post("/api/conversation", async (req, res) => {
   try {
     const { senderId, receiverId } = req.body;
-    const newConversation = new Conversations({members:{senderId, receiverId}})
-    await newConversation.save()
-    res.status(200).send('Conversation created sucessfully')
+    const newConversation = new Conversations({ members: [senderId, receiverId] });
+    await newConversation.save();
+    res.status(200).send("Conversation created sucessfully");
   } catch (error) {
-    console.log("Error:", error )
+    console.log("Error:", error);
   }
-})
+});
+
+app.get("/api/conversation/:userId", async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const conversations = await Conversations.find({ members: { $in: [userId] } });
+
+    // Wait for all promises to resolve
+    const conversationUserData = await Promise.all(
+      conversations.map(async (conversation) => {
+        const receiverId = conversation.members.find((member) => member !== userId);
+        const user = await Users.findById(receiverId); // Fetch user details
+        return {user: {email: user.email, fullName: user.fullName}, conversationId:conversation._id }
+      })
+    );
+
+    res.status(200).json(conversationUserData); // Send resolved data
+  } catch (error) {
+    console.error("Error fetching conversations:", error);
+    res.status(500).json({ error: "An error occurred" }); // Return a proper error response
+  }
+});
+
 
 //Creating the PORT
 app.listen(PORT, () => {

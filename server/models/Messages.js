@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 //Creating the Schema For the User
 const messageSchema = mongoose.Schema({
-  conversationId: { type: string },
+  conversationId: { type: string }, 
   senderId: { typr: string },
   message: { type: string },
   

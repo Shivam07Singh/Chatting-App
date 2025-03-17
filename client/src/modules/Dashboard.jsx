@@ -1,7 +1,7 @@
 import React from "react";
 import userLogo from "../assets/user-solid.svg";
+import tree from "../assets/tree.jpg";
 import Input from "../components/Input";
-
 
 const Dashboard = () => {
   const contacts = [
@@ -30,22 +30,25 @@ const Dashboard = () => {
       status: "Available",
       img: userLogo,
     },
-    
+
     {
       name: "Alexander",
       status: "Available",
       img: userLogo,
     },
-    
   ];
 
   return (
-    <div className="w-screen flex">
+    <div className="box-border w-screen flex">
       <div className="h-screen w-[25%] bg-gray-100">
         <div className="flex items-center my-[20px] mx-14">
-          <div className="border-2 border-blue-400 p-[4px] rounded-full overflow-auto">
-            <img src={userLogo} width={50} height={50} alt="userLogo" />
+          <div
+            className="border-2 border-blue-400 rounded-full overflow-hidden"
+            style={{ width: "50px", height: "50px" }}
+          >
+            <img src={tree} alt="userLogo" className="w-full h-full object-cover" />
           </div>
+
           <div className="ml-8">
             <p className="text-2xl">Tutorial</p>
             <p className="text-lg font-light">My Account</p>
@@ -167,7 +170,7 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-      <div className="min-h-screen w-full md:w-1/4 bg-gray-100"></div>
+      <div className="min-h-screen w-[25%] md:w-1/4 bg-green-100"></div>
     </div>
   );
 };
