@@ -124,7 +124,7 @@ app.get("/api/conversation/:userId", async (req, res) => {
         const receiverId = conversation.members.find((member) => member !== userId);
         const user = await Users.findById(receiverId);
         return {
-          user: { email: user.email, fullName: user.fullName },
+          user: {receiverId: user._id, email: user.email, fullName: user.fullName },
           conversationId: conversation._id,
         };
       })
@@ -138,6 +138,7 @@ app.get("/api/conversation/:userId", async (req, res) => {
 });
 
 // ✅ Send Message Route
+// ✅ Send Message Route (FIXED)
 app.post("/api/message", async (req, res) => {
   try {
     const { conversationId, senderId, message, receiverId } = req.body;
@@ -146,23 +147,36 @@ app.post("/api/message", async (req, res) => {
       return res.status(400).send("Please fill all required fields");
     }
 
-    if (!conversationId && receiverId) {
-      const newConversation = new Conversations({ members: [senderId, receiverId] });
-      await newConversation.save();
-      const newMessage = new Messages({ conversationId: newConversation._id, senderId, message });
-      await newMessage.save();
-      return res.status(200).send("Message sent successfully");
+    let existingConversation = conversationId 
+      ? await Conversations.findById(conversationId) 
+      : await Conversations.findOne({
+          members: { $all: [senderId, receiverId] }
+        });
+
+    // ✅ If no existing conversation, create a new one
+    if (!existingConversation && receiverId) {
+      existingConversation = new Conversations({ members: [senderId, receiverId] });
+      await existingConversation.save();
     }
 
-    const newMessage = new Messages({ conversationId, senderId, message });
+    const newMessage = new Messages({
+      conversationId: existingConversation._id,
+      senderId,
+      message
+    });
+
     await newMessage.save();
 
-    return res.status(200).send("Message sent successfully");
+    return res.status(200).send({
+      message: "Message sent successfully",
+      conversationId: existingConversation._id
+    });
   } catch (error) {
     console.error("Error:", error.message);
     return res.status(500).send("Failed to send message");
   }
 });
+
 
 // ✅ Get Messages by Conversation ID
 app.get("/api/message/:conversationId", async (req, res) => {
