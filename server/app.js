@@ -8,113 +8,121 @@ const Conversations = require("./models/Conversation");
 const Messages = require("./models/Messages");
 const PORT = process.env.PORT || 8000;
 
-//Middleware
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cors());
 
-//Connection to DB
+// ✅ DB Connection
 connectDB();
 
-//Routing
 app.get("/", (req, res) => {
   res.send("Welcome");
 });
 
-app.post("/api/register", async (req, res, next) => {
+// ✅ Registration Route
+app.post("/api/register", async (req, res) => {
   try {
     const { fullName, email, password } = req.body;
 
-    if ((!fullName, !email, !password)) {
-      res.send(400).send("Fill all required feilds");
-    } else {
-      const isUserExist = await Users.findOne({ email: email });
-      if (isUserExist) {
-        res.status(400).send("User already exists");
-      } else {
-        const newUser = new Users({
-          fullName,
-          email,
-        });
-        bcryptjs.hash(password, 8, (err, hashedPassword) => {
-          newUser.set("password", hashedPassword);
-          newUser.save();
-          next();
-        });
-        return res.status(201).send("User registerd succssfully");
-      }
+    // ✅ Fix: Correct `if` condition
+    if (!fullName || !email || !password) {
+      return res.status(400).send("Fill all required fields");
     }
+
+    const isUserExist = await Users.findOne({ email });
+    if (isUserExist) {
+      return res.status(400).send("User already exists");
+    }
+
+    const newUser = new Users({ fullName, email });
+
+    bcryptjs.hash(password, 8, async (err, hashedPassword) => {
+      if (err) {
+        return res.status(500).send("Error hashing password");
+      }
+      newUser.set("password", hashedPassword);
+      await newUser.save();
+      return res.status(201).send("User registered successfully");
+    });
   } catch (error) {
-    console.log("Error:", error);
+    console.error("Error:", error.message);
+    return res.status(500).send("Internal server error");
   }
 });
 
-//Login Authentication
-app.post("/api/login", async (req, res, next) => {
+// ✅ Login Route
+app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ message: "Fill all required fields" }); // ✅ Status 400 for missing fields
+      return res.status(400).json({ message: "Fill all required fields" });
     }
 
     const user = await Users.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: "User email or password is incorrect" }); // ✅ Status 401 for incorrect email
+      return res.status(401).json({ message: "User email or password is incorrect" });
     }
 
     const validateUser = await bcryptjs.compare(password, user.password);
     if (!validateUser) {
-      return res.status(401).json({ message: "User email or password is incorrect" }); // ✅ Status 401 for incorrect password
+      return res.status(401).json({ message: "User email or password is incorrect" });
     }
 
-    const payload = {
-      userId: user._id,
-      email: user.email,
-    };
+    const payload = { userId: user._id, email: user.email };
     const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY || "Shivam@project";
 
     jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: 84600 }, async (err, token) => {
       if (err) {
-        return res.status(500).json({ message: "Error generating token" }); // ✅ Status 500 for JWT failure
+        return res.status(500).json({ message: "Error generating token" });
       }
 
-      await Users.updateOne({ _id: user._id }, { $set: { token: token } });
+      user.token = token;
+      await user.save();
 
-      user.save();
       return res.status(200).json({
-        user: { id:user._id, email: user.email, fullName: user.fullName },
+        user: { id: user._id, email: user.email, fullName: user.fullName },
         token: token,
       });
     });
   } catch (error) {
-    console.log("Error:", error);
-    return res.status(500).json({ message: "Internal Server Error" }); // ✅ Status 500 for server errors
+    console.error("Error:", error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
-
+// ✅ Create Conversation Route
 app.post("/api/conversation", async (req, res) => {
   try {
     const { senderId, receiverId } = req.body;
+
+    if (!senderId || !receiverId) {
+      return res.status(400).json({ error: "Missing sender or receiver ID" });
+    }
+
     const newConversation = new Conversations({ members: [senderId, receiverId] });
-    await newConversation.save();
-    res.status(200).send("Conversation created sucessfully");
+    const savedConversation = await newConversation.save();
+
+    return res.status(201).json({
+      message: "Conversation created successfully",
+      conversation: savedConversation,
+    });
   } catch (error) {
-    console.log("Error:", error);
+    console.error("Error:", error.message);
+    return res.status(500).json({ error: "Failed to create conversation", details: error.message });
   }
 });
 
+// ✅ Get Conversations by User ID
 app.get("/api/conversation/:userId", async (req, res) => {
   try {
     const userId = req.params.userId;
     const conversations = await Conversations.find({ members: { $in: [userId] } });
 
-    // Wait for all promises to resolve
     const conversationUserData = await Promise.all(
       conversations.map(async (conversation) => {
         const receiverId = conversation.members.find((member) => member !== userId);
-        const user = await Users.findById(receiverId); // Fetch user details
+        const user = await Users.findById(receiverId);
         return {
           user: { email: user.email, fullName: user.fullName },
           conversationId: conversation._id,
@@ -122,66 +130,90 @@ app.get("/api/conversation/:userId", async (req, res) => {
       })
     );
 
-    res.status(200).json(conversationUserData); // Send resolved data
+    return res.status(200).json(conversationUserData);
   } catch (error) {
     console.error("Error fetching conversations:", error);
-    res.status(500).json({ error: "An error occurred" }); // Return a proper error response
+    return res.status(500).json({ error: "An error occurred" });
   }
 });
 
+// ✅ Send Message Route
 app.post("/api/message", async (req, res) => {
   try {
     const { conversationId, senderId, message, receiverId } = req.body;
-    if (!senderId || !message) return res.status(400).send("Please fill all required field");
+
+    if (!senderId || !message) {
+      return res.status(400).send("Please fill all required fields");
+    }
+
     if (!conversationId && receiverId) {
       const newConversation = new Conversations({ members: [senderId, receiverId] });
       await newConversation.save();
       const newMessage = new Messages({ conversationId: newConversation._id, senderId, message });
       await newMessage.save();
-      res.status(200).send("Message sent successfully");
-    } else if (!conversationId && receiverId) {
-      return res.status(400).send("Please fill all required field");
+      return res.status(200).send("Message sent successfully");
     }
+
     const newMessage = new Messages({ conversationId, senderId, message });
     await newMessage.save();
-    res.status(200).send("Message sent successfully");
+
+    return res.status(200).send("Message sent successfully");
   } catch (error) {
-    console.log(error, "Error");
+    console.error("Error:", error.message);
+    return res.status(500).send("Failed to send message");
   }
 });
 
-app.get("/api/message/:conversatoinId", async (req, res) => {
+// ✅ Get Messages by Conversation ID
+app.get("/api/message/:conversationId", async (req, res) => {
   try {
-    const conversationId = req.params.conversatoinId;
+    const conversationId = req.params.conversationId;
+    console.log("Fetching messages for conversationId:", conversationId);
+
     if (!conversationId) return res.status(200).json([]);
+
     const messages = await Messages.find({ conversationId });
-    const messageUserData = Promise.all(
+    console.log("Messages fetched from DB:", messages);
+
+    const messageUserData = await Promise.all(
       messages.map(async (message) => {
         const user = await Users.findById(message.senderId);
-        return { user: { email: user.email, fullName: user.fullName }, message: message.message };
+        return {
+          user: { id: user._id, email: user.email, fullName: user.fullName },
+          message: message.message,
+        };
       })
     );
-    res.status(200).json(await messageUserData);
+
+    console.log("Final message data:", messageUserData);
+
+    res.status(200).json(messageUserData);
   } catch (error) {
-    console.log("Error", error);
+    console.log("Error:", error);
+    res.status(500).json({ error: "Failed to fetch messages" });
   }
 });
 
+
+// ✅ Get All Users
 app.get("/api/users", async (req, res) => {
   try {
     const users = await Users.find();
-    const userData = Promise.all(
-      users.map(async (user) => {
-        return { user: { email: user.email, fullName: user.fullName }, userId: user._id };
-      })
+    const userData = await Promise.all(
+      users.map((user) => ({
+        user: { email: user.email, fullName: user.fullName },
+        userId: user._id,
+      }))
     );
-    res.status(200).json(await userData);
+
+    return res.status(200).json(userData);
   } catch (error) {
-    console.log("Error", error);
+    console.error("Error:", error.message);
+    return res.status(500).json({ error: "Failed to retrieve users" });
   }
 });
 
-//Creating the PORT
+// ✅ Start Server
 app.listen(PORT, () => {
-  console.log("Server started on port : " + PORT);
+  console.log(`Server started on port: ${PORT}`);
 });
