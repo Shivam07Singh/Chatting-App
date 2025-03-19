@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import axios from 'axios'
 import userLogo from "../assets/user-solid.svg";
 import tree from "../assets/tree.jpg";
 import Input from "../components/Input";
@@ -38,6 +39,32 @@ const Dashboard = () => {
     },
   ];
 
+  useEffect(() => {
+    const loggedInUser = JSON.parse(localStorage.getItem("user:details"));
+
+    const fetchConversations = async () => {
+      if (!loggedInUser?.id) return; // ✅ Prevents API call if id is undefined
+
+      try {
+        const { data } = await axios.get(
+          `http://localhost:8000/api/conversation/${loggedInUser.id}`
+        );
+        console.log("Conversations =>", data);
+        
+        setConversation(data)
+      } catch (error) {
+        console.error("Error fetching conversations:", error.response?.data || error.message);
+      }
+    };
+
+    fetchConversations();
+  }, []); 
+
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem("user:details")));
+  const [conversations, setConversation] = useState([]);
+  console.log(user);
+  console.log(conversations)
+
   return (
     <div className="box-border w-screen flex">
       <div className="h-screen w-[25%] bg-gray-100">
@@ -50,7 +77,7 @@ const Dashboard = () => {
           </div>
 
           <div className="ml-8">
-            <p className="text-2xl">Tutorial</p>
+            <p className="text-2xl">{user?.fullName}</p>
             <p className="text-lg font-light">My Account</p>
           </div>
         </div>
@@ -58,7 +85,7 @@ const Dashboard = () => {
         <div className="mx-14 mt-7">
           <div className="text-blue-400 text-lg">Messages</div>
           <div>
-            {contacts.map(({ name, status, img }) => {
+            {conversations.map(({ conversationId, user }) => {
               return (
                 <div className="flex items-center py-[20px] border-b border-b-gray-300">
                   <div className="cursor-pointer flex items-center">
@@ -66,8 +93,8 @@ const Dashboard = () => {
                       <img src={img} width={35} height={35} alt="userLogo" />
                     </div>
                     <div className="ml-6">
-                      <h3 className="text-lg font-semibold">{name}</h3>
-                      <p className="text-sm text-gray-400 font-light">{status}</p>
+                      <h3 className="text-lg font-semibold">{user.fullName}</h3>
+                      <p className="text-sm text-gray-400 font-light">{user.email}</p>
                     </div>
                   </div>
                 </div>

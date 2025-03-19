@@ -1,5 +1,6 @@
 const express = require("express");
 const connectDB = require("./connection/db");
+const cors = require("cors");
 const Users = require("./models/Users");
 const bcryptjs = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -11,6 +12,7 @@ const PORT = process.env.PORT || 8000;
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cors());
 
 //Connection to DB
 connectDB();
@@ -53,42 +55,44 @@ app.post("/api/login", async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      res.status(400).send("Fill all required fields");
-    } else {
-      const user = await Users.findOne({ email });
-      if (!user) {
-        res.send("User email, or password is incorrect");
-      } else {
-        const validateUser = await bcryptjs.compare(password, user.password);
-        if (!validateUser) {
-          res.send("User email, or password is incorrect");
-        } else {
-          const payload = {
-            userId: user._id,
-            email: user.email,
-          };
-          const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY || "Shivam@project";
-
-          jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: 84600 }, async (err, token) => {
-            await Users.updateOne(
-              { _id: user._id },
-              {
-                $set: { token: token },
-              }
-            );
-            user.save();
-            next();
-          });
-          res
-            .status(200)
-            .json({ user: { email: user.email, fullName: user.fullName }, token: user.token });
-        }
-      }
+      return res.status(400).json({ message: "Fill all required fields" }); // ✅ Status 400 for missing fields
     }
+
+    const user = await Users.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: "User email or password is incorrect" }); // ✅ Status 401 for incorrect email
+    }
+
+    const validateUser = await bcryptjs.compare(password, user.password);
+    if (!validateUser) {
+      return res.status(401).json({ message: "User email or password is incorrect" }); // ✅ Status 401 for incorrect password
+    }
+
+    const payload = {
+      userId: user._id,
+      email: user.email,
+    };
+    const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY || "Shivam@project";
+
+    jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: 84600 }, async (err, token) => {
+      if (err) {
+        return res.status(500).json({ message: "Error generating token" }); // ✅ Status 500 for JWT failure
+      }
+
+      await Users.updateOne({ _id: user._id }, { $set: { token: token } });
+
+      user.save();
+      return res.status(200).json({
+        user: { id:user._id, email: user.email, fullName: user.fullName },
+        token: token,
+      });
+    });
   } catch (error) {
     console.log("Error:", error);
+    return res.status(500).json({ message: "Internal Server Error" }); // ✅ Status 500 for server errors
   }
 });
+
 
 app.post("/api/conversation", async (req, res) => {
   try {
@@ -133,7 +137,7 @@ app.post("/api/message", async (req, res) => {
       const newConversation = new Conversations({ members: [senderId, receiverId] });
       await newConversation.save();
       const newMessage = new Messages({ conversationId: newConversation._id, senderId, message });
-      await newMessage.save()
+      await newMessage.save();
       res.status(200).send("Message sent successfully");
     } else if (!conversationId && receiverId) {
       return res.status(400).send("Please fill all required field");

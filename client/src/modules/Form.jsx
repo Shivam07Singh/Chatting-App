@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import Input from "../components/Input";
 import Button from "../components/Button";
+import axios from "axios";
 import { Navigate, useNavigate } from "react-router-dom";
-
 
 function Form({ isSignInPage = true }) {
   const [data, setData] = useState({
@@ -13,7 +13,33 @@ function Form({ isSignInPage = true }) {
     password: "",
   });
 
-const navigate = useNavigate()
+  const navigate = useNavigate();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      console.log("Data =>", data);
+      const res = await axios.post(
+        `http://localhost:8000/api/${isSignInPage ? "login" : "register"}`,
+        data,
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      console.log("Data :>>", res.data);
+      if (res.data.token) {
+        localStorage.setItem("user:token", res.data.token);
+        localStorage.setItem("user:details", JSON.stringify(res.data.user));
+        navigate("/");
+      }
+    } catch (error) {
+      if (error.response?.status === 401) {
+        alert("Invalid Credentials"); // ✅ Handle incorrect login with 401 status
+      } else {
+        console.error("Error =>", error.response?.data || error.message);
+        alert(error.response?.data?.message || "An error occurred");
+      }
+    }
+  };
+
 
   return (
     <div className="bg-blue-100 h-screen flex justify-center items-center">
@@ -22,10 +48,7 @@ const navigate = useNavigate()
         <div className="text-xl font-light mb-14">
           {isSignInPage ? "Sign in to get explored" : "Sign up now to get started"}
         </div>
-        <form
-          className="flex flex-col w-full items-center"
-          onSubmit={() => console.log("Form Submitted")}
-        >
+        <form className="flex flex-col w-full items-center" onSubmit={(e) => handleSubmit(e)}>
           {isSignInPage ? (
             ""
           ) : (
@@ -67,7 +90,10 @@ const navigate = useNavigate()
         <div>
           {isSignInPage ? "Didn't have an acoount ? " : "Aready have an account ? "}
 
-          <span className="text-blue-700 underline cursor-pointer" onClick={() => navigate(`/users/${isSignInPage ? 'sign_up' : 'sign_in'}`)}>
+          <span
+            className="text-blue-700 underline cursor-pointer"
+            onClick={() => navigate(`/users/${isSignInPage ? "sign_up" : "sign_in"}`)}
+          >
             {isSignInPage ? "Sign up" : "Sign in"}
           </span>
         </div>
