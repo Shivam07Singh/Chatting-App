@@ -3,8 +3,10 @@ import axios from "axios";
 import userLogo from "../assets/user-solid.svg";
 import tree from "../assets/tree.jpg";
 import Input from "../components/Input";
+import {io} from "socket.io-client"
 
 const Dashboard = () => {
+  const [socket, setSocket] = useState(null)
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user:details")));
   const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState({});
@@ -12,6 +14,11 @@ const Dashboard = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null); // New state to track selected user before conversation creation
+
+
+  useEffect(() => {
+    setSocket(io('http://localhost:5173/'))
+  },[])
 
   // Fetch all conversations for the logged-in user
   const fetchConversations = async () => {
