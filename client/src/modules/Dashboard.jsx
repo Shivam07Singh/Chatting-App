@@ -4,6 +4,7 @@ import userLogo from "../assets/user-solid.svg";
 import tree from "../assets/tree.jpg";
 import Input from "../components/Input";
 import { io } from "socket.io-client";
+import { io } from "socket.io-client";
 
 const Dashboard = () => {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user:details")));
@@ -127,6 +128,12 @@ const Dashboard = () => {
 
   // Send a message
   const sendMessage = async () => {
+    socket?.emit("sendMessage", {
+      senderId: user?.id,
+      message,
+      receiverId: selectedUser?.receiverId || messages?.receiver?.receiverId,
+      conversationId: messages?.conversationId,
+    });
     socket?.emit("sendMessage", {
       senderId: user?.id,
       message,
