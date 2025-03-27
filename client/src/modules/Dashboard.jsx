@@ -62,60 +62,12 @@ const Dashboard = () => {
     };
   }, [user?.id]);
 
-  // Error handling and reconnection UI
-  const renderConnectionStatus = () => {
-    if (!isConnected) {
-      return (
-        <div className="fixed top-0 left-0 w-full bg-red-500 text-white p-2 text-center">
-          {connectionError || "Disconnected from chat. Reconnecting..."}
-        </div>
-      );
-    }
-    return null;
-  };
-
+  // Scroll to bottom when messages change
   useEffect(() => {
     messageRef?.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages?.messages]);
 
-  useEffect(() => {
-    if (socket && user?.id) {
-      socket.emit("addUser", user.id);
-      socket.on("getUsers", (users) => {
-        console.log("activeUser :", users);
-      });
-
-      socket.on("getMessage", (data) => {
-        // Check if the message is for the current conversation or user
-        const isCurrentConversation =
-          messages?.conversationId === data.conversationId ||
-          selectedUser?.receiverId === data.senderId ||
-          messages?.receiver?.receiverId === data.senderId;
-
-        // Only add the message if it's relevant to the current conversation
-        if (isCurrentConversation) {
-          setMessages((prev) => ({
-            ...prev,
-            messages: [
-              ...(prev.messages || []),
-              {
-                user: data.user,
-                message: data.message,
-                timestamp: new Date(),
-              },
-            ],
-          }));
-        }
-      });
-
-      // Clean up listeners when component unmounts or dependencies change
-      return () => {
-        socket.off("getMessage");
-      };
-    }
-  }, [socket, user?.id, messages?.conversationId, selectedUser]);
-
-  // Fetch all conversations for the logged-in user
+  // Fetch conversations when component mounts or user changes
   const fetchConversations = async () => {
     if (!user?.id) return;
 
@@ -131,7 +83,7 @@ const Dashboard = () => {
     }
   };
 
-  // Fetch all users except the logged-in user
+  // Fetch users when component mounts or user changes
   const fetchUsers = async () => {
     if (!user?.id) return;
 
@@ -148,6 +100,57 @@ const Dashboard = () => {
     fetchConversations();
     fetchUsers();
   }, [user?.id]);
+
+  // Socket message handling
+  useEffect(() => {
+    if (socket && user?.id) {
+      socket.emit("addUser", user.id);
+      socket.on("getUsers", (users) => {
+        console.log("activeUser :", users);
+      });
+
+      socket.on("getMessage", (data) => {
+        // Check if the message is for the current conversation or user
+        const isCurrentConversation =
+          messages?.conversationId === data.conversationId ||
+          selectedUser?.receiverId === data.senderId ||
+          messages?.receiver?.receiverId === data.senderId;
+
+        // Only add the message if it's relevant to the current conversation
+        // And not already added (using isSelf flag to prevent duplicates)
+        if (isCurrentConversation) {
+          setMessages((prev) => {
+            // Check if the message is already in the list to prevent duplicates
+            const messageExists = (prev.messages || []).some(
+              (existingMsg) =>
+                existingMsg.message === data.message && existingMsg.user.id === data.user.id
+            );
+
+            if (messageExists) {
+              return prev;
+            }
+
+            return {
+              ...prev,
+              messages: [
+                ...(prev.messages || []),
+                {
+                  user: data.user,
+                  message: data.message,
+                  timestamp: new Date(),
+                },
+              ],
+            };
+          });
+        }
+      });
+
+      // Clean up listeners when component unmounts or dependencies change
+      return () => {
+        socket.off("getMessage");
+      };
+    }
+  }, [socket, user?.id, messages?.conversationId, selectedUser]);
 
   // Handle clicking on an existing conversation
   const handleConversationClick = async (conversationId, receiverUser) => {
@@ -232,19 +235,6 @@ const Dashboard = () => {
         }));
       }
 
-      // Update the messages state with the new message
-      setMessages((prev) => ({
-        ...prev,
-        messages: [
-          ...(prev.messages || []),
-          {
-            user: { id: user?.id, fullName: user?.fullName, email: user?.email },
-            message,
-            timestamp: new Date(),
-          },
-        ],
-      }));
-
       // Clear the message input and selected user
       setMessage("");
       setSelectedUser(null);
@@ -261,6 +251,18 @@ const Dashboard = () => {
     if (e.key === "Enter") {
       sendMessage();
     }
+  };
+
+  // Connection status rendering
+  const renderConnectionStatus = () => {
+    if (!isConnected) {
+      return (
+        <div className="fixed top-0 left-0 w-full bg-red-500 text-white p-2 text-center">
+          {connectionError || "Disconnected from chat. Reconnecting..."}
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
