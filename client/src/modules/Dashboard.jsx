@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import userLogo from "../assets/user-solid.svg";
 import tree from "../assets/tree.jpg";
 import Input from "../components/Input";
-import {io} from "socket.io-client"
+import { io } from "socket.io-client";
 
 const Dashboard = () => {
-  const [socket, setSocket] = useState(null)
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user:details")));
   const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState({});
@@ -14,11 +13,43 @@ const Dashboard = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null); // New state to track selected user before conversation creation
+  const [socket, setSocket] = useState(null);
 
+  const messageRef = useRef(null);
+
+  console.log(messages);
+
+  // Socket initialization effect
+  useEffect(() => {
+    const newSocket = io("http://localhost:8000");
+    setSocket(newSocket);
+
+    // Cleanup function to disconnect socket when component unmounts
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []); // Empty dependency array ensures this runs only once
 
   useEffect(() => {
-    setSocket(io('http://localhost:5173/'))
-  },[])
+    messageRef?.current?.scrollIntoView({ behavior: "smooth" });
+  },[messages?.messages]);
+
+  // Add user to socket effect
+  useEffect(() => {
+    if (socket && user?.id) {
+      socket.emit("addUser", user.id);
+      socket?.on("getUsers", (users) => {
+        console.log("activeUser :", users);
+      });
+      socket.on("getMessage", (data) => {
+        console.log("data: ", data);
+        setMessages((prev) => ({
+          ...prev,
+          messages: [...prev.messages, { user: data.user, message: data.message }],
+        }));
+      });
+    }
+  }, [socket, user?.id]); // Depends on both socket and user ID
 
   // Fetch all conversations for the logged-in user
   const fetchConversations = async () => {
@@ -96,6 +127,12 @@ const Dashboard = () => {
 
   // Send a message
   const sendMessage = async () => {
+    socket?.emit("sendMessage", {
+      senderId: user?.id,
+      message,
+      receiverId: selectedUser?.receiverId || messages?.receiver?.receiverId,
+      conversationId: messages?.conversationId,
+    });
     if (!message) return;
 
     try {
@@ -247,16 +284,19 @@ const Dashboard = () => {
               <div className="text-center py-4">Loading messages...</div>
             ) : messages?.messages?.length > 0 ? (
               messages.messages.map(({ message, user: messageUser }, index) => (
-                <div
-                  key={index}
-                  className={`max-w-[40%] rounded-b-xl p-4 mb-4 ${
-                    messageUser?.id === user?.id
-                      ? "bg-blue-400 rounded-tl-xl ml-auto text-white"
-                      : "bg-gray-200 rounded-tr-xl"
-                  }`}
-                >
-                  {message}
-                </div>
+                <>
+                  <div
+                    key={index}
+                    className={`max-w-[40%] rounded-b-xl p-4 mb-4 ${
+                      messageUser?.id === user?.id
+                        ? "bg-blue-400 rounded-tl-xl ml-auto text-white"
+                        : "bg-gray-200 rounded-tr-xl"
+                    }`}
+                  >
+                    {message}
+                  </div>
+                  <div ref={messageRef}></div>
+                </>
               ))
             ) : (
               <div className="text-center text-lg font-semibold mt-24">
@@ -326,7 +366,7 @@ const Dashboard = () => {
       </div>
 
       {/* Right Sidebar - Users List */}
-      <div className="min-h-screen w-[25%] bg-green-100 px-8 py-16 overflow-y-auto">
+      <div className="min-h-screen w-[25%] bg-green-100 px-8 py-16 overflow-scroll ">
         <div className="text-blue-400 text-lg font-semibold mb-4">People</div>
         {users.length > 0 ? (
           users.map(({ userId, user: listUser }) => (

@@ -4,4 +4,6 @@
   'secondary':"#f3f5ff",
   'light':'#f9faff'} */
 
-
+::-webkit-scrollbar {
+  display: none;
+}

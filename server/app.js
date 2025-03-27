@@ -1,3 +1,4 @@
+const http = require("http");
 const express = require("express");
 const connectDB = require("./connection/db");
 const cors = require("cors");
@@ -18,6 +19,65 @@ connectDB();
 
 app.get("/", (req, res) => {
   res.send("Welcome");
+});
+
+//Socket.io
+const server = http.createServer(app);
+const io = require("socket.io")(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"],
+  },
+});
+
+let users = [];
+io.on("connection", (socket) => {
+  console.log("User Connected", socket.id);
+  socket.on("addUser", (userId) => {
+    const isUserExist = users.find((user) => user.userId === userId);
+    if (!isUserExist) {
+      const user = { userId, socketId: socket.id };
+      users.push(user);
+      io.emit("getUsers", users);
+    }
+  });
+
+  socket.on("sendMessage", async ({ senderId, receiverId, message, conversationId }) => {
+    const receiver = users.find((user) => {
+      user.userId === receiverId;
+    });
+    const sender = users.find((user) => {
+      user.userId === senderId;
+    });
+    const user = await Users.findById(senderId);
+    if (receiver) {
+      io.to(receiver.socketId)
+        .to(senderId.socket.id)
+        .emit("getMessage", {
+          senderId,
+          message,
+          conversationId,
+          receiverId,
+          user: { id: user._id, fullName: user.fullName, email: user.email },
+        });
+    } else {
+      io.to(senderId.socket.id)
+        .emit("getMessage", {
+          senderId,
+          message,
+          conversationId,
+          receiverId,
+          user: { id: user._id, fullName: user.fullName, email: user.email },
+        });
+    }
+  });
+
+  socket.on("disconnect", () => {
+    users = users.filter((user) => {
+      user.socketId !== socket.id;
+    });
+    io.emit("getUsers", users);
+  });
 });
 
 // ✅ Registration Route
@@ -412,6 +472,6 @@ app.get("/api/conversation/check/:senderId/:receiverId", async (req, res) => {
 });
 
 // ✅ Start Server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server started on port: ${PORT}`);
 });
