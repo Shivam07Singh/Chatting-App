@@ -3,10 +3,9 @@ import axios from "axios";
 import userLogo from "../assets/user-solid.svg";
 import tree from "../assets/tree.jpg";
 import Input from "../components/Input";
-import {io} from "socket.io-client"
+import { io } from "socket.io-client";
 
 const Dashboard = () => {
-  const [socket, setSocket] = useState(null)
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user:details")));
   const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState({});
@@ -14,11 +13,37 @@ const Dashboard = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null); // New state to track selected user before conversation creation
+  const [socket, setSocket] = useState(null);
 
+  console.log(messages);
 
+  // Socket initialization effect
   useEffect(() => {
-    setSocket(io('http://localhost:5173/'))
-  },[])
+    const newSocket = io("http://localhost:8000");
+    setSocket(newSocket);
+
+    // Cleanup function to disconnect socket when component unmounts
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []); // Empty dependency array ensures this runs only once
+
+  // Add user to socket effect
+  useEffect(() => {
+    if (socket && user?.id) {
+      socket.emit("addUser", user.id);
+      socket?.on("getUsers", (users) => {
+        console.log("activeUser :", users);
+      });
+      socket.on("getMessage", (data) => {
+        console.log("data: ", data);
+        setMessages((prev) => ({
+          ...prev,
+          messages: [...prev.messages, { user : data.user, message: data.message }],
+        }));
+      });
+    }
+  }, [socket, user?.id]); // Depends on both socket and user ID
 
   // Fetch all conversations for the logged-in user
   const fetchConversations = async () => {
@@ -96,6 +121,12 @@ const Dashboard = () => {
 
   // Send a message
   const sendMessage = async () => {
+    socket?.emit("sendMessage", {
+      senderId: user?.id,
+      message,
+      receiverId: selectedUser?.receiverId || messages?.receiver?.receiverId,
+      conversationId: messages?.conversationId,
+    });
     if (!message) return;
 
     try {
