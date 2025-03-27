@@ -38,37 +38,44 @@ io.on("connection", (socket) => {
     if (!isUserExist) {
       const user = { userId, socketId: socket.id };
       users.push(user);
-      io.emit("getUsers", users);
     }
+    io.emit("getUsers", users);
   });
 
   socket.on("sendMessage", async ({ senderId, receiverId, message, conversationId }) => {
-    const receiver = users.find((user) => {
-      user.userId === receiverId;
-    });
-    const sender = users.find((user) => {
-      user.userId === senderId;
-    });
-    const user = await Users.findById(senderId);
-    if (receiver) {
-      io.to(receiver.socketId)
-        .to(senderId.socket.id)
-        .emit("getMessage", {
-          senderId,
-          message,
-          conversationId,
-          receiverId,
-          user: { id: user._id, fullName: user.fullName, email: user.email },
-        });
-    } else {
-      io.to(senderId.socket.id)
-        .emit("getMessage", {
-          senderId,
-          message,
-          conversationId,
-          receiverId,
-          user: { id: user._id, fullName: user.fullName, email: user.email },
-        });
+    try {
+      // More robust receiver finding
+      const receiver = users.find((user) => user.userId === receiverId);
+      const sender = users.find((user) => user.userId === senderId);
+
+      // Find sender's full user details
+      const user = await Users.findById(senderId);
+      if (!user) {
+        console.error("Sender not found");
+        return;
+      }
+
+      const messagePayload = {
+        senderId,
+        message,
+        conversationId,
+        receiverId,
+        user: {
+          id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+        },
+      };
+
+      if (receiver) {
+        // Send only to receiver if they are online
+        socket.to(receiver.socketId).emit("getMessage", messagePayload);
+      }
+
+      // Always send to sender to ensure consistent message display
+      socket.emit("getMessage", messagePayload);
+    } catch (error) {
+      console.error("Error in sendMessage:", error);
     }
   });
 
@@ -77,6 +84,9 @@ io.on("connection", (socket) => {
       user.socketId !== socket.id;
     });
     io.emit("getUsers", users);
+  });
+  socket.on("connect_error", (error) => {
+    console.error("Connection error:", error);
   });
 });
 
