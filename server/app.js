@@ -76,9 +76,7 @@ io.on("connection", (socket) => {
  });
 
   socket.on("disconnect", () => {
-    users = users.filter((user) => {
-      user.socketId !== socket.id;
-    });
+    users = users.filter((user) => user.socketId !== socket.id);
     io.emit("getUsers", users);
   });
   socket.on("connect_error", (error) => {
@@ -308,109 +306,6 @@ app.get("/api/message/:conversationId", async (req, res) => {
   }
 });
 
-// ✅ Get or Create Conversation - Modified to add createConversation option
-app.post("/api/conversation/get-or-create", async (req, res) => {
-  try {
-    const { senderId, receiverId, createConversation = false } = req.body;
-
-    if (!senderId || !receiverId) {
-      return res.status(400).json({ error: "Missing sender or receiver ID" });
-    }
-
-    // Check if conversation already exists
-    let conversation = await Conversations.findOne({
-      members: { $all: [senderId, receiverId] },
-    });
-
-    // If no conversation exists and createConversation is true, create a new one
-    if (!conversation && createConversation) {
-      conversation = new Conversations({ members: [senderId, receiverId] });
-      await conversation.save();
-    }
-
-    // Get the receiver's user info
-    const receiver = await Users.findById(receiverId);
-    if (!receiver) {
-      return res.status(404).json({ error: "Receiver not found" });
-    }
-
-    // Get messages for this conversation (if it exists)
-    const messages = conversation ? await Messages.find({ conversationId: conversation._id }) : [];
-
-    const messageUserData = await Promise.all(
-      messages.map(async (message) => {
-        const user = await Users.findById(message.senderId);
-        return {
-          user: { id: user._id, email: user.email, fullName: user.fullName },
-          message: message.message,
-          timestamp: message.createdAt,
-        };
-      })
-    );
-
-    return res.status(200).json({
-      conversation: conversation
-        ? {
-            id: conversation._id,
-            members: conversation.members,
-          }
-        : null,
-      receiver: {
-        receiverId: receiver._id,
-        email: receiver.email,
-        fullName: receiver.fullName,
-      },
-      messages: messageUserData,
-    });
-  } catch (error) {
-    console.error("Error:", error.message);
-    return res.status(500).json({ error: "Failed to get or create conversation" });
-  }
-});
-
-// ✅ Get User Profile
-app.get("/api/user/:userId", async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const user = await Users.findById(userId).select("-password -token");
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    return res.status(200).json({ user });
-  } catch (error) {
-    console.error("Error:", error.message);
-    return res.status(500).json({ error: "Failed to get user profile" });
-  }
-});
-
-// ✅ Update User Profile
-app.put("/api/user/:userId", async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const { fullName, email } = req.body;
-
-    const updatedUser = await Users.findByIdAndUpdate(
-      userId,
-      { fullName, email },
-      { new: true }
-    ).select("-password -token");
-
-    if (!updatedUser) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    return res.status(200).json({
-      message: "Profile updated successfully",
-      user: updatedUser,
-    });
-  } catch (error) {
-    console.error("Error:", error.message);
-    return res.status(500).json({ error: "Failed to update user profile" });
-  }
-});
-
 // ✅ Get All Users
 app.get("/api/users/:userId", async (req, res) => {
   try {
@@ -433,47 +328,6 @@ app.get("/api/users/:userId", async (req, res) => {
   } catch (error) {
     console.error("Error:", error.message);
     return res.status(500).json({ error: "Failed to retrieve users" });
-  }
-});
-
-// ✅ Delete Conversation
-app.delete("/api/conversation/:conversationId", async (req, res) => {
-  try {
-    const conversationId = req.params.conversationId;
-
-    // Delete all messages in the conversation
-    await Messages.deleteMany({ conversationId });
-
-    // Delete the conversation
-    const deletedConversation = await Conversations.findByIdAndDelete(conversationId);
-
-    if (!deletedConversation) {
-      return res.status(404).json({ error: "Conversation not found" });
-    }
-
-    return res.status(200).json({ message: "Conversation deleted successfully" });
-  } catch (error) {
-    console.error("Error:", error.message);
-    return res.status(500).json({ error: "Failed to delete conversation" });
-  }
-});
-
-// ✅ Check if conversation exists between two users
-app.get("/api/conversation/check/:senderId/:receiverId", async (req, res) => {
-  try {
-    const { senderId, receiverId } = req.params;
-
-    const conversation = await Conversations.findOne({
-      members: { $all: [senderId, receiverId] },
-    });
-
-    return res.status(200).json({
-      exists: !!conversation,
-      conversationId: conversation ? conversation._id : null,
-    });
-  } catch (error) {
-    console.error("Error:", error.message);
-    return res.status(500).json({ error: "Failed to check conversation" });
   }
 });
 
