@@ -38,45 +38,51 @@ io.on("connection", (socket) => {
     if (!isUserExist) {
       const user = { userId, socketId: socket.id };
       users.push(user);
-      io.emit("getUsers", users);
     }
+    io.emit("getUsers", users);
   });
 
-  socket.on("sendMessage", async ({ senderId, receiverId, message, conversationId }) => {
-    const receiver = users.find((user) => {
-      user.userId === receiverId;
-    });
-    const sender = users.find((user) => {
-      user.userId === senderId;
-    });
-    const user = await Users.findById(senderId);
-    if (receiver) {
-      io.to(receiver.socketId)
-        .to(senderId.socket.id)
-        .emit("getMessage", {
-          senderId,
-          message,
-          conversationId,
-          receiverId,
-          user: { id: user._id, fullName: user.fullName, email: user.email },
-        });
-    } else {
-      io.to(senderId.socket.id)
-        .emit("getMessage", {
-          senderId,
-          message,
-          conversationId,
-          receiverId,
-          user: { id: user._id, fullName: user.fullName, email: user.email },
-        });
-    }
-  });
+ socket.on("sendMessage", async ({ senderId, receiverId, message, conversationId, timestamp }) => {
+   try {
+     const user = await Users.findById(senderId);
+     if (!user) {
+       console.error("Sender not found");
+       return;
+     }
+
+     const messagePayload = {
+       senderId,
+       message,
+       conversationId,
+       receiverId,
+       timestamp,
+       user: {
+         id: user._id,
+         fullName: user.fullName,
+         email: user.email,
+       },
+     };
+
+     // Find receiver and send message only to them
+     const receiver = users.find((user) => user.userId === receiverId);
+     if (receiver) {
+       socket.to(receiver.socketId).emit("getMessage", messagePayload);
+     }
+
+     // Don't send back to sender - they already have the message in their UI
+   } catch (error) {
+     console.error("Error in sendMessage:", error);
+   }
+ });
 
   socket.on("disconnect", () => {
     users = users.filter((user) => {
       user.socketId !== socket.id;
     });
     io.emit("getUsers", users);
+  });
+  socket.on("connect_error", (error) => {
+    console.error("Connection error:", error);
   });
 });
 
