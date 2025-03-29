@@ -1,14 +1,17 @@
 const mongoose = require("mongoose");
-const url = "mongodb://localhost:27017/";
+require("dotenv").config(); 
 
-//Conection to DB
+const url = process.env.MONGODB_URI;
+
 const connectDB = async () => {
   try {
-    await mongoose.connect(url).then(() => {
-      console.log("MongoDB connection Sucessful");
+    await mongoose.connect(url, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
     });
+    console.log("MongoDB connection successful");
   } catch (error) {
-    console.log("Error connecting MongoDB", error);
+    console.error("Error connecting to MongoDB", error);
   }
 };
 
