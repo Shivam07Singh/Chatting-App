@@ -41,9 +41,9 @@ app.get("/api/verify", (req, res) => {
   }
 });
 
-app.get("/", (req, res) => {
-  res.send("Welcome");
-});
+// app.get("/", (req, res) => {
+//   res.send("Welcome");
+// });
 
 //Socket.io
 const server = http.createServer(app);
@@ -192,7 +192,6 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// ... (Rest of your existing routes remain exactly the same)
 // ✅ Create Conversation Route
 app.post("/api/conversation", async (req, res) => {
   try {
