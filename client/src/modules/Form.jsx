@@ -3,6 +3,7 @@ import Input from "../components/Input";
 import Button from "../components/Button";
 import axios from "axios";
 import { Navigate, useNavigate } from "react-router-dom";
+const apiUrl = process.env.REACT_APP_API_URL;
 
 function Form({ isSignInPage = true }) {
   const [data, setData] = useState({
@@ -18,11 +19,9 @@ function Form({ isSignInPage = true }) {
     e.preventDefault();
     try {
       console.log("Data =>", data);
-      const res = await axios.post(
-        `http://localhost:8000/api/${isSignInPage ? "login" : "register"}`,
-        data,
-        { headers: { "Content-Type": "application/json" } }
-      );
+      const res = await axios.post(`${apiUrl}/api/${isSignInPage ? "login" : "register"}`, data, {
+        headers: { "Content-Type": "application/json" },
+      });
 
       console.log("Data :>>", res.data);
       if (res.data.token) {

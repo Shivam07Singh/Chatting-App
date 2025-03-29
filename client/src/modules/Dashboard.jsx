@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import { Navigate } from "react-router-dom";
+const apiUrl = process.env.REACT_APP_API_URL;
 
 const Dashboard = () => {
   // Authentication check - preserved original logic
@@ -39,7 +40,7 @@ const Dashboard = () => {
   useEffect(() => {
     const verifyToken = async () => {
       try {
-        await axios.get("http://localhost:8000/api/verify", {
+        await axios.get(`${apiUrl}/api/verify`, {
           headers: { Authorization: `Bearer ${token}` },
         });
       } catch (error) {
@@ -55,7 +56,7 @@ const Dashboard = () => {
 
   // Socket connection - preserved original structure with security enhancement
   useEffect(() => {
-    const newSocket = io("http://localhost:8000", {
+    const newSocket = io(`${apiUrl}`, {
       auth: { token }, // Added token authentication
       reconnection: true,
       reconnectionAttempts: 5,
@@ -130,7 +131,7 @@ const Dashboard = () => {
 
     setLoading(true);
     try {
-      const { data } = await axios.get(`http://localhost:8000/api/conversation/${user.id}`, {
+      const { data } = await axios.get(`${apiUrl}/api/conversation/${user.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setConversations(data);
@@ -150,7 +151,7 @@ const Dashboard = () => {
     if (!user?.id) return;
 
     try {
-      const { data } = await axios.get(`http://localhost:8000/api/users/${user?.id}`, {
+      const { data } = await axios.get(`${apiUrl}/api/users/${user?.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUsers(data);
@@ -173,7 +174,7 @@ const Dashboard = () => {
   const handleConversationClick = async (conversationId, receiverUser) => {
     setLoading(true);
     try {
-      const { data } = await axios.get(`http://localhost:8000/api/message/${conversationId}`, {
+      const { data } = await axios.get(`${apiUrl}/api/message/${conversationId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -220,7 +221,7 @@ const Dashboard = () => {
 
       if (!conversationId && selectedUser) {
         const { data } = await axios.post(
-          `http://localhost:8000/api/conversation`,
+          `${apiUrl}/api/conversation`,
           {
             senderId: user?.id,
             receiverId: selectedUser.receiverId,
@@ -241,7 +242,7 @@ const Dashboard = () => {
       socket?.emit("sendMessage", messageData);
 
       await axios.post(
-        `http://localhost:8000/api/message`,
+        `${apiUrl}/api/message`,
         {
           conversationId,
           senderId: user?.id,
