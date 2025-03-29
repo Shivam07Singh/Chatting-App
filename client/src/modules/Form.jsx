@@ -19,7 +19,7 @@ function Form({ isSignInPage = true }) {
     e.preventDefault();
     try {
       console.log("Data =>", data);
-      const res = await axios.post(`${apiUrl}/api/${isSignInPage ? "login" : "register"}`, data, {
+      const res = await axios.post(`${apiUrl}/${isSignInPage ? "login" : "register"}`, data, {
         headers: { "Content-Type": "application/json" },
       });
 
