@@ -25,7 +25,7 @@ app.get("/api/verify", (req, res) => {
   }
 
   const token = authHeader.split(" ")[1];
-  const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY || "Shivam@project";
+  const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET_KEY);
