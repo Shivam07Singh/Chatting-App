@@ -43,7 +43,7 @@ app.get("/", (req, res) => {
 const server = http.createServer(app);
 const io = require("socket.io")(server, {
   cors: {
-    origin: "chitchat108.netlify.app",
+    origin: "http://localhost:5173, https://chitchat108.netlify.app",
     methods: ["GET", "POST"],
   },
 });
