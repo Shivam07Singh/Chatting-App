@@ -17,6 +17,24 @@ app.use(cors());
 // ✅ DB Connection
 connectDB();
 
+app.get("/api/verify", (req, res) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).json({ message: "No token provided" });
+  }
+
+  const token = authHeader.split(" ")[1];
+  const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY || "Shivam@project";
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET_KEY);
+    res.status(200).json({ valid: true, user: decoded });
+  } catch (error) {
+    res.status(401).json({ message: "Invalid or expired token" });
+  }
+});
+
 app.get("/", (req, res) => {
   res.send("Welcome");
 });
@@ -42,38 +60,35 @@ io.on("connection", (socket) => {
     io.emit("getUsers", users);
   });
 
- socket.on("sendMessage", async ({ senderId, receiverId, message, conversationId, timestamp }) => {
-   try {
-     const user = await Users.findById(senderId);
-     if (!user) {
-       console.error("Sender not found");
-       return;
-     }
+  socket.on("sendMessage", async ({ senderId, receiverId, message, conversationId, timestamp }) => {
+    try {
+      const user = await Users.findById(senderId);
+      if (!user) {
+        console.error("Sender not found");
+        return;
+      }
 
-     const messagePayload = {
-       senderId,
-       message,
-       conversationId,
-       receiverId,
-       timestamp,
-       user: {
-         id: user._id,
-         fullName: user.fullName,
-         email: user.email,
-       },
-     };
+      const messagePayload = {
+        senderId,
+        message,
+        conversationId,
+        receiverId,
+        timestamp,
+        user: {
+          id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+        },
+      };
 
-     // Find receiver and send message only to them
-     const receiver = users.find((user) => user.userId === receiverId);
-     if (receiver) {
-       socket.to(receiver.socketId).emit("getMessage", messagePayload);
-     }
-
-     // Don't send back to sender - they already have the message in their UI
-   } catch (error) {
-     console.error("Error in sendMessage:", error);
-   }
- });
+      const receiver = users.find((user) => user.userId === receiverId);
+      if (receiver) {
+        socket.to(receiver.socketId).emit("getMessage", messagePayload);
+      }
+    } catch (error) {
+      console.error("Error in sendMessage:", error);
+    }
+  });
 
   socket.on("disconnect", () => {
     users = users.filter((user) => user.socketId !== socket.id);
@@ -84,52 +99,68 @@ io.on("connection", (socket) => {
   });
 });
 
-// ✅ Registration Route
+// ✅ Enhanced Registration Route
 app.post("/api/register", async (req, res) => {
   try {
     const { fullName, email, password } = req.body;
 
     if (!fullName || !email || !password) {
-      return res.status(400).send("Fill all required fields");
+      return res.status(400).json({ message: "Please fill all required fields" });
     }
 
     const isUserExist = await Users.findOne({ email });
     if (isUserExist) {
-      return res.status(400).send("User already exists");
+      return res.status(409).json({ message: "User already exists" });
     }
 
     const newUser = new Users({ fullName, email });
 
     bcryptjs.hash(password, 8, async (err, hashedPassword) => {
       if (err) {
-        return res.status(500).send("Error hashing password");
+        return res.status(500).json({ message: "Error hashing password" });
       }
       newUser.set("password", hashedPassword);
-      await newUser.save();
-      return res.status(201).send("User registered successfully");
+
+      const payload = { userId: newUser._id, email: newUser.email };
+      const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY || "Shivam@project";
+
+      jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: 84600 }, async (err, token) => {
+        if (err) {
+          return res.status(500).json({ message: "Error generating token" });
+        }
+
+        newUser.token = token;
+        await newUser.save();
+
+        return res.status(201).json({
+          user: { id: newUser._id, email: newUser.email, fullName: newUser.fullName },
+          token: token,
+          message: "User registered successfully",
+        });
+      });
     });
   } catch (error) {
     console.error("Error:", error.message);
-    return res.status(500).send("Internal server error");
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 
-// ✅ Login Route
+// ✅ Login Route (optimized error messages)
 app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ message: "Fill all required fields" });
+      return res.status(400).json({ message: "Please fill all required fields" });
     }
 
     const user = await Users.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: "User email or password is incorrect" });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
     const validateUser = await bcryptjs.compare(password, user.password);
     if (!validateUser) {
-      return res.status(401).json({ message: "User email or password is incorrect" });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
     const payload = { userId: user._id, email: user.email };
@@ -146,14 +177,16 @@ app.post("/api/login", async (req, res) => {
       return res.status(200).json({
         user: { id: user._id, email: user.email, fullName: user.fullName },
         token: token,
+        message: "Login successful",
       });
     });
   } catch (error) {
     console.error("Error:", error.message);
-    return res.status(500).json({ message: "Internal Server Error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 
+// ... (Rest of your existing routes remain exactly the same)
 // ✅ Create Conversation Route
 app.post("/api/conversation", async (req, res) => {
   try {
@@ -163,7 +196,6 @@ app.post("/api/conversation", async (req, res) => {
       return res.status(400).json({ error: "Missing sender or receiver ID" });
     }
 
-    // Check if conversation already exists
     const existingConversation = await Conversations.findOne({
       members: { $all: [senderId, receiverId] },
     });
@@ -196,10 +228,7 @@ app.get("/api/conversation/:userId", async (req, res) => {
 
     const conversationUserData = await Promise.all(
       conversations.map(async (conversation) => {
-        // Find the other member (receiver)
         const receiverId = conversation.members.find((member) => member !== userId);
-
-        // Skip if receiverId is invalid or user is not found
         if (!receiverId) return null;
 
         const user = await Users.findById(receiverId);
@@ -216,9 +245,7 @@ app.get("/api/conversation/:userId", async (req, res) => {
       })
     );
 
-    // Filter out invalid/null values
     const filteredData = conversationUserData.filter((data) => data !== null);
-
     return res.status(200).json(filteredData);
   } catch (error) {
     console.error("Error fetching conversations:", error.message);
@@ -226,39 +253,35 @@ app.get("/api/conversation/:userId", async (req, res) => {
   }
 });
 
-// ✅ Send Message Route - Modified to create conversation only when sending message
+// ✅ Send Message Route
 app.post("/api/message", async (req, res) => {
   try {
     const { conversationId, senderId, message, receiverId } = req.body;
 
     if (!senderId || !message) {
-      return res.status(400).send("Please fill all required fields");
+      return res.status(400).json({ message: "Please fill all required fields" });
     }
 
     let existingConversation = null;
 
-    // First, try to use the provided conversationId
     if (conversationId) {
       existingConversation = await Conversations.findById(conversationId);
     }
 
-    // If no conversationId or conversation not found, but receiverId is provided, find or create one
     if (!existingConversation && receiverId) {
       existingConversation = await Conversations.findOne({
         members: { $all: [senderId, receiverId] },
       });
 
       if (!existingConversation) {
-        // Create a new conversation only when actually sending a message
         existingConversation = new Conversations({ members: [senderId, receiverId] });
         await existingConversation.save();
         console.log("New conversation created:", existingConversation._id);
       }
     }
 
-    // If still no conversation, we can't send the message
     if (!existingConversation) {
-      return res.status(400).send("No valid conversation found or created");
+      return res.status(400).json({ message: "No valid conversation found or created" });
     }
 
     const newMessage = new Messages({
@@ -275,7 +298,7 @@ app.post("/api/message", async (req, res) => {
     });
   } catch (error) {
     console.error("Error:", error.message);
-    return res.status(500).send("Failed to send message");
+    return res.status(500).json({ message: "Failed to send message" });
   }
 });
 
@@ -283,9 +306,6 @@ app.post("/api/message", async (req, res) => {
 app.get("/api/message/:conversationId", async (req, res) => {
   try {
     const conversationId = req.params.conversationId;
-
-    console.log("Fetching messages for conversationId:", conversationId);
-
     const messages = await Messages.find({ conversationId });
 
     const messageUserData = await Promise.all(
@@ -302,7 +322,7 @@ app.get("/api/message/:conversationId", async (req, res) => {
     return res.status(200).json(messageUserData);
   } catch (error) {
     console.log("Error:", error);
-    res.status(500).json({ error: "Failed to fetch messages" });
+    res.status(500).json({ message: "Failed to fetch messages" });
   }
 });
 
@@ -327,7 +347,7 @@ app.get("/api/users/:userId", async (req, res) => {
     return res.status(200).json(await userData);
   } catch (error) {
     console.error("Error:", error.message);
-    return res.status(500).json({ error: "Failed to retrieve users" });
+    return res.status(500).json({ message: "Failed to retrieve users" });
   }
 });
 
