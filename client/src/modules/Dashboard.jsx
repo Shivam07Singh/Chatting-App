@@ -5,8 +5,8 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import { Navigate } from "react-router-dom";
-const apiUrl = process.env.REACT_APP_API_URL || "https://chatting-app-ntgk.onrender.com";
-
+// const apiUrl = process.env.REACT_APP_API_URL || "https://chatting-app-ntgk.onrender.com";
+const apiUrl = "https://chatting-app-ntgk.onrender.com";
 const Dashboard = () => {
   // Authentication check - preserved original logic
   const token = localStorage.getItem("user:token");
@@ -56,7 +56,7 @@ const Dashboard = () => {
 
   // Socket connection - preserved original structure with security enhancement
   useEffect(() => {
-    console.log("Connecting to Socket.IO at:", apiUrl); // Debug log
+    console.log("Connecting to Socket.IO to:", apiUrl); // Debug log
 
     const newSocket = io(apiUrl, {
       auth: { token }, // Added token authentication
@@ -64,7 +64,7 @@ const Dashboard = () => {
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       // timeout: 5000,
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
     });
 
     newSocket.on("connect", () => {
@@ -116,6 +116,7 @@ const Dashboard = () => {
     setSocket(newSocket);
 
     return () => {
+      console.log("Cleaning up socket");
       newSocket.disconnect();
     };
   }, [user?.id, token]);
@@ -225,6 +226,7 @@ const Dashboard = () => {
 
     try {
       let conversationId = messages.conversationId;
+      let isNewConversation = false;
 
       if (!conversationId && selectedUser) {
         const { data } = await axios.post(
@@ -236,6 +238,7 @@ const Dashboard = () => {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         conversationId = data.conversation._id;
+        isNewConversation = true;
       }
 
       const messageData = {
@@ -271,6 +274,22 @@ const Dashboard = () => {
           },
         ],
       }));
+
+      // After successfully sending the message:
+      if (isNewConversation) {
+        // Add the new conversation to the conversations list
+        setConversations((prevConversations) => [
+          ...prevConversations,
+          {
+            conversationId: conversationId,
+            user: {
+              receiverId: selectedUser.receiverId,
+              fullName: selectedUser.fullName,
+              email: selectedUser.email,
+            },
+          },
+        ]);
+      }
 
       setMessage("");
     } catch (error) {
