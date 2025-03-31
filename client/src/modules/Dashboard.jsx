@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import { Navigate } from "react-router-dom";
-const apiUrl = process.env.REACT_APP_API_URL;
+const apiUrl = process.env.REACT_APP_API_URL || "https://chatting-app-ntgk.onrender.com";
 
 const Dashboard = () => {
   // Authentication check - preserved original logic
@@ -56,18 +56,21 @@ const Dashboard = () => {
 
   // Socket connection - preserved original structure with security enhancement
   useEffect(() => {
-    const newSocket = io(`${apiUrl}`, {
+    console.log("Connecting to Socket.IO at:", apiUrl); // Debug log
+
+    const newSocket = io(apiUrl, {
       auth: { token }, // Added token authentication
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      timeout: 5000,
+      // timeout: 5000,
       transports: ["websocket", "polling"],
     });
 
     newSocket.on("connect", () => {
+      console.log("Socket connected!");
       setIsConnected(true);
-      setConnectionError(null);
+      // setConnectionError(null);
       if (user?.id) {
         newSocket.emit("addUser", user.id);
       }
@@ -76,7 +79,10 @@ const Dashboard = () => {
     newSocket.on("connect_error", (error) => {
       console.error("Socket connection error:", error);
       setIsConnected(false);
-      setConnectionError("Could not connect to chat server. Retrying...");
+      // setConnectionError("Could not connect to chat server. Retrying...");
+
+      // Auto-retry after delay
+      setTimeout(() => newSocket.connect(), 2000); 
     });
 
     newSocket.on("disconnect", (reason) => {
@@ -88,18 +94,19 @@ const Dashboard = () => {
     });
 
     newSocket.on("getMessage", (data) => {
+      // Avoid adding your own messages twice
       if (data.senderId === user?.id) return;
 
       setMessages((prev) => {
-        const existingMessages = prev.messages || [];
+        // const existingMessages = prev.messages || [];
         return {
           ...prev,
           messages: [
-            ...existingMessages,
+            ...(prev.messages || []),
             {
               user: data.user,
               message: data.message,
-              timestamp: data.timestamp || new Date(),
+              timestamp: data.timestamp || new Date().toISOString(),
             },
           ],
         };
@@ -118,7 +125,7 @@ const Dashboard = () => {
     if (!isConnected) {
       return (
         <div className="fixed top-0 left-0 w-full bg-red-500 text-white p-2 text-center">
-          {connectionError || "Disconnected from chat. Reconnecting..."}
+          Disconnected from chat. Reconnecting...
         </div>
       );
     }
@@ -260,7 +267,7 @@ const Dashboard = () => {
           {
             user: { id: user?.id, fullName: user?.fullName, email: user?.email },
             message,
-            timestamp: new Date(),
+            timestamp: new Date().toISOString(),
           },
         ],
       }));
