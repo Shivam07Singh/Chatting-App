@@ -128,7 +128,7 @@ app.post("/api/register", async (req, res) => {
       newUser.set("password", hashedPassword);
 
       const payload = { userId: newUser._id, email: newUser.email };
-      const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
+      const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY || "Shivam@project";
 
       jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: 84600 }, async (err, token) => {
         if (err) {
@@ -170,7 +170,7 @@ app.post("/api/login", async (req, res) => {
     }
 
     const payload = { userId: user._id, email: user.email };
-    const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
+    const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY || "Shivam@project";
 
     jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: 84600 }, async (err, token) => {
       if (err) {
