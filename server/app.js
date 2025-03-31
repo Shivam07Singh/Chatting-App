@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(
   cors({
-    origin: ["https://chitchat108.netlify.app"],
+    origin: ["https://chitchat108.netlify.app",],
     methods: ["GET", "POST"],
     credentials: true,
   })
@@ -128,7 +128,7 @@ app.post("/api/register", async (req, res) => {
       newUser.set("password", hashedPassword);
 
       const payload = { userId: newUser._id, email: newUser.email };
-      const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY || "Shivam@project";
+      const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
 
       jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: 84600 }, async (err, token) => {
         if (err) {
@@ -170,7 +170,7 @@ app.post("/api/login", async (req, res) => {
     }
 
     const payload = { userId: user._id, email: user.email };
-    const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY || "Shivam@project";
+    const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
 
     jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: 84600 }, async (err, token) => {
       if (err) {
