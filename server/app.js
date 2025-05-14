@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(
   cors({
-    origin: ["https://chitchat108.netlify.app",],
+    origin: ["https://chitchat108.netlify.app"],
     methods: ["GET", "POST"],
     credentials: true,
   })
