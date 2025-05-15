@@ -10,6 +10,7 @@ const Messages = require("./models/Messages");
 const PORT = process.env.PORT || 8000;
 
 const app = express();
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(
@@ -20,6 +21,11 @@ app.use(
   })
 );
 
+// Optional: Handle all OPTIONS requests
+app.options("*", cors());
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 // ✅ DB Connection
 connectDB();
 
@@ -49,7 +55,7 @@ app.get("/api/verify", (req, res) => {
 const server = http.createServer(app);
 const io = require("socket.io")(server, {
   cors: {
-    origin: "https://chitchat108.netlify.app",
+    origin: ["https://chitchat108.netlify.app", "http://localhost:5173"],
     methods: ["GET", "POST"],
   },
 });
