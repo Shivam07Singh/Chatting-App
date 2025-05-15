@@ -5,8 +5,8 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import { Navigate } from "react-router-dom";
-// const apiUrl = process.env.REACT_APP_API_URL || "https://chatting-app-ntgk.onrender.com";
-const apiUrl = "https://chatting-app-ntgk.onrender.com";
+
+const apiUrl = import.meta.env.VITE_API_URL;
 
 const Dashboard = () => {
   // Authentication check - preserved original logic

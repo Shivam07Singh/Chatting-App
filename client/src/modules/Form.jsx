@@ -5,7 +5,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 // Set default backend URL if environment variable is missing
-const apiUrl = process.env.REACT_APP_API_URL || "https://chatting-app-ntgk.onrender.com";
+const apiUrl = import.meta.env.VITE_API_URL;
 
 function Form({ isSignInPage = true }) {
   const [data, setData] = useState({
